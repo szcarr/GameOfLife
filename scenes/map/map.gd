@@ -2,7 +2,7 @@ extends Node2D
 
 
 @export_category("Generation")
-@export var map_size_horizontal: int = 300
+@export var map_size_horizontal: int = 200
 @export var game_seed: int = -1
 @export_range(0.0, 1.0, 0.01) var alive_bias = 0.1
 
@@ -12,8 +12,12 @@ extends Node2D
 var map_size := Vector2i(int(map_size_horizontal), int(map_size_horizontal * 0.5625))
 var value_map: Dictionary = {}
 var tile_map: Dictionary = {}
+var value_map_queue: Dictionary = {} # Used by InputManager
 var rng := RandomNumberGenerator.new()
 var tile: PackedScene = preload("res://scenes/tile/Tile.tscn")
+var tile_size := Vector2(0, 0)
+
+var mutex := Mutex.new()
 
 var neighbors: Array[Vector2i] = [
 	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
@@ -22,29 +26,69 @@ var neighbors: Array[Vector2i] = [
 ]
 
 func _ready() -> void:
-	initialize_settings()
-	initialize_world()
-	display_map(value_map)
+	_initialize_settings()
+	_initialize_world()
+	_display_map(value_map)
 	
 
 # Old map vs new map.
 func _process(_delta: float) -> void:
-	
-	value_map = generate_map(value_map)
-	update_map(value_map)
+	value_map = _generate_map(value_map)
+	_update_map(value_map)
+
+
+## Tile size is determined at runtime dynamically based on horizontal size set in the inspector.
+## See 'initialize_world' func.
+func get_tile_size() -> Vector2:
+	return tile_size
+
+
+func get_value_map(enable_process: bool = true) -> Dictionary:
+	set_process(enable_process)
+	return value_map
+
+
+func get_value_map_queue() -> Dictionary:
+	mutex.lock()
+	var queue_map = value_map_queue.duplicate()
+	mutex.unlock()
+	return queue_map
+
+
+func set_value_map(map: Dictionary, enable_process: bool = true) -> void:
+	value_map = map
+	set_process(enable_process)
+
+
+func set_value_map_queue(map: Dictionary) -> void:
+	mutex.lock()
+	value_map_queue = map
+	mutex.unlock()
 
 
 ## Needs to be called once.
-func display_map(current_map: Dictionary) -> void:
+func _display_map(current_map: Dictionary) -> void:
 	for current_position: Vector2i in current_map.keys():
 		self.add_child(tile_map.get(current_position))
 
 
 ## Handles data in the map.
 ## Creates the map that will show in the next frame.
-func generate_map(current_map: Dictionary) -> Dictionary:
+func _generate_map(current_map: Dictionary) -> Dictionary:
 	var next_map: Dictionary = {}
 	for current_position: Vector2i in current_map.keys():
+		# Values from the user takes priority.
+		# If no values from user, iterate over gamerules.
+		mutex.lock()
+		if value_map_queue.get(current_position) != null:
+			print(value_map_queue, value_map_queue.get(current_position))
+			next_map[current_position] = value_map_queue.get(current_position)
+			value_map_queue.erase(current_position)
+			#print(current_position, current_map.get(current_position), value_map_queue.get(current_position))
+			#print(value_map_queue)
+			mutex.unlock()
+			continue
+		mutex.unlock()
 		var alive_neighbors := 0
 		var current_tile_value: int = current_map.get(current_position)
 		for vector_offset: Vector2i in neighbors:
@@ -55,7 +99,7 @@ func generate_map(current_map: Dictionary) -> Dictionary:
 			next_map[current_position] = 0
 		elif current_tile_value == 0 and alive_neighbors == 3: # Rebirth
 			next_map[current_position] = 1
-		elif current_tile_value == 1 and alive_neighbors == 2 or alive_neighbors == 3: # Survive
+		elif current_tile_value == 1 and 1 < alive_neighbors and alive_neighbors < 4: # Survive
 			next_map[current_position] = 1
 		elif current_tile_value == 1 and alive_neighbors > 3: # Overpopulation
 			next_map[current_position] = 0
@@ -64,19 +108,19 @@ func generate_map(current_map: Dictionary) -> Dictionary:
 	return next_map
 
 
-func initialize_settings() -> void:
-	Engine.set_max_fps(fps_limit)
+func _initialize_settings() -> void:
+	Engine.set_max_fps(fps_limit) # Determines the max amount of generations each second.
 
 
 ## Creating and assigning tiles to its position.
 ## Also assigns values to map dict for the first generation/frame.
-func initialize_world() -> void:
+func _initialize_world() -> void:
 	rng.set_seed(game_seed)
 	var resolution := Vector2(
 			int(ProjectSettings.get_setting("display/window/size/viewport_width")),
 			int(ProjectSettings.get_setting("display/window/size/viewport_height")),
 	)
-	var tile_size := Vector2(resolution.x / map_size.x, resolution.y / map_size.y)
+	tile_size = Vector2(resolution.x / map_size.x, resolution.y / map_size.y)
 	for y: int in map_size.y:
 		for x: int in map_size.x:
 			var new_tile = tile.instantiate()
@@ -89,7 +133,7 @@ func initialize_world() -> void:
 
 
 ## Needs to be called every frame
-func update_map(current_map: Dictionary) -> void:
+func _update_map(current_map: Dictionary) -> void:
 	for tile_position: Vector2i in tile_map.keys():
 		var tile_value = current_map.get(tile_position)
 		tile_map.get(tile_position).set_tile_value(tile_value)

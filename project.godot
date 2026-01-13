@@ -11,6 +11,11 @@ config_version=5
 [application]
 
 config/name="GameOfLife"
-run/main_scene="uid://dd7kxu6m2lmq4"
+run/main_scene="uid://d1axxbvf8hysr"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Map="*res://scenes/map/map.gd"
+InputManager="*res://scenes/input_manager/InputManager.tscn"

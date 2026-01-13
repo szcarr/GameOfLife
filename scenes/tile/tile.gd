@@ -17,3 +17,5 @@ func set_tile_value(n_tile_value: int) -> void:
 
 func get_tile_value() -> int:
 	return self.tile_value
+	
+	
