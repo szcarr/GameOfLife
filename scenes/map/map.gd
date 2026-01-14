@@ -2,22 +2,26 @@ extends Node2D
 
 
 @export_category("Generation")
-@export var map_size_horizontal: int = 200
+@export var map_size_horizontal: int = 12
 @export var game_seed: int = -1
 @export_range(0.0, 1.0, 0.01) var alive_bias = 0.1
 
 @export_category("Settings")
 @export var fps_limit: int = 20
 
+@onready var generation_label: RichTextLabel = $GenerationLabel
+
 var map_size := Vector2i(int(map_size_horizontal), int(map_size_horizontal * 0.5625))
-var value_map: Dictionary = {}
-var tile_map: Dictionary = {}
-var value_map_queue: Dictionary = {} # Used by InputManager
 var rng := RandomNumberGenerator.new()
 var tile: PackedScene = preload("res://scenes/tile/Tile.tscn")
 var tile_size := Vector2(0, 0)
-
 var mutex := Mutex.new()
+
+var value_map: Dictionary = {}
+var tile_map: Dictionary = {}
+var value_map_queue: Dictionary = {} # Used by InputManager
+
+var generation_counter: int = 0
 
 var neighbors: Array[Vector2i] = [
 	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
@@ -29,12 +33,12 @@ func _ready() -> void:
 	_initialize_settings()
 	_initialize_world()
 	_display_map(value_map)
-	
 
-# Old map vs new map.
+
 func _process(_delta: float) -> void:
 	value_map = _generate_map(value_map)
 	_update_map(value_map)
+	generation_counter += 1
 
 
 ## Tile size is determined at runtime dynamically based on horizontal size set in the inspector.
@@ -81,11 +85,9 @@ func _generate_map(current_map: Dictionary) -> Dictionary:
 		# If no values from user, iterate over gamerules.
 		mutex.lock()
 		if value_map_queue.get(current_position) != null:
-			print(value_map_queue, value_map_queue.get(current_position))
+			print(value_map_queue, current_map.get(current_position))
 			next_map[current_position] = value_map_queue.get(current_position)
 			value_map_queue.erase(current_position)
-			#print(current_position, current_map.get(current_position), value_map_queue.get(current_position))
-			#print(value_map_queue)
 			mutex.unlock()
 			continue
 		mutex.unlock()
@@ -95,6 +97,7 @@ func _generate_map(current_map: Dictionary) -> Dictionary:
 			var neighbor_position = current_position + vector_offset
 			if current_map.get(neighbor_position) == 1: # Neighbor is alive
 				alive_neighbors += 1
+		# Determining tile value
 		if alive_neighbors < 2: # Die of loneliness
 			next_map[current_position] = 0
 		elif current_tile_value == 0 and alive_neighbors == 3: # Rebirth
@@ -134,6 +137,9 @@ func _initialize_world() -> void:
 
 ## Needs to be called every frame
 func _update_map(current_map: Dictionary) -> void:
+	generation_label.call_deferred("set_text", "Generation: %s" % [generation_counter])
 	for tile_position: Vector2i in tile_map.keys():
 		var tile_value = current_map.get(tile_position)
 		tile_map.get(tile_position).set_tile_value(tile_value)
+		
+	
