@@ -2,7 +2,6 @@ extends Node
 
 ## This file handles inputs.
 
-
 func _process(_delta):
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		set_alive_tile()

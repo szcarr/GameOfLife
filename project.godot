@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 Map="*res://scenes/map/map.gd"
 InputManager="*res://scenes/input_manager/InputManager.tscn"
+UI="*res://scenes/ui/UI.tscn"
 
 [file_customization]
 
