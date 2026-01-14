@@ -2,14 +2,14 @@ extends Node2D
 
 
 @export_category("Generation")
-@export var map_size_horizontal: int = 12
+@export var map_size_horizontal: int = 100
 @export var game_seed: int = -1
 @export_range(0.0, 1.0, 0.01) var alive_bias = 0.1
 
 @export_category("Settings")
 @export var fps_limit: int = 20
 
-@onready var generation_label: RichTextLabel = $GenerationLabel
+@onready var generation_label := %GenerationLabel
 
 var map_size := Vector2i(int(map_size_horizontal), int(map_size_horizontal * 0.5625))
 var rng := RandomNumberGenerator.new()
@@ -85,7 +85,7 @@ func _generate_map(current_map: Dictionary) -> Dictionary:
 		# If no values from user, iterate over gamerules.
 		mutex.lock()
 		if value_map_queue.get(current_position) != null:
-			print(value_map_queue, current_map.get(current_position))
+			print(current_position, value_map_queue.get(current_position))
 			next_map[current_position] = value_map_queue.get(current_position)
 			value_map_queue.erase(current_position)
 			mutex.unlock()
@@ -137,7 +137,8 @@ func _initialize_world() -> void:
 
 ## Needs to be called every frame
 func _update_map(current_map: Dictionary) -> void:
-	generation_label.call_deferred("set_text", "Generation: %s" % [generation_counter])
+	if generation_label: # When label is ready.
+		generation_label.call_deferred("set_text", "Generation: %s" % [generation_counter])
 	for tile_position: Vector2i in tile_map.keys():
 		var tile_value = current_map.get(tile_position)
 		tile_map.get(tile_position).set_tile_value(tile_value)

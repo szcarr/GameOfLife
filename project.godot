@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="GameOfLife"
-run/main_scene="uid://d1axxbvf8hysr"
+run/main_scene="uid://35qgyhhi06ri"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -19,3 +19,10 @@ config/icon="res://icon.svg"
 
 Map="*res://scenes/map/map.gd"
 InputManager="*res://scenes/input_manager/InputManager.tscn"
+
+[file_customization]
+
+folder_colors={
+"res://fonts/": "yellow",
+"res://scenes/": "red"
+}
